@@ -53,7 +53,7 @@ import { PermissionGuard } from './permission.guard';
       inject: [ConfigService]
     }),
     UserModule,
-    // RedisModule
+    RedisModule
   ],
   controllers: [AppController],
   providers: [

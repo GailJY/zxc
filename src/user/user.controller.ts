@@ -9,6 +9,8 @@ import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { RequireLogin, UserInfo } from 'src/custom.decorator';
 import { UserDetailVo } from './vo/user-info.vo';
+import { UpdateUserPasswordDto } from '../dto/update-user-password.dto';
+import { UpdateUserDto } from 'src/dto/udpate-user.dto';
 
 @Controller('user')
 export class UserController {
@@ -146,7 +148,7 @@ export class UserController {
     if (!user) {
       throw new NotFoundException('用户不存在');
     }
-    
+
     const vo = new UserDetailVo();
     vo.id = user.id;
     vo.email = user.email;
@@ -161,5 +163,16 @@ export class UserController {
   }
 
 
+  @Post(['update_password', 'admin/update_password'])
+  @RequireLogin()
+  async updatePassword(@UserInfo('userId') userId: number, @Body() passwordDto: UpdateUserPasswordDto) {
+    return await this.userService.updatePassword(userId, passwordDto);
+  }
+
+  @Post(['update', 'admin/update'])
+  @RequireLogin()
+  async update(@UserInfo('userId') userId: number, @Body() updateUserDto: UpdateUserDto){
+    return await this.userService.update(userId, updateUserDto)
+  }
 
 }
