@@ -26,8 +26,8 @@ export class UserService {
     @InjectRepository(Permission)
     private permissionRepository: Repository<Permission>;
 
-    @Inject(RedisService)
-    private redisService: RedisService;
+    // @Inject(RedisService)
+    // private redisService: RedisService;
 
     async initData() {
         const user1 = new User();
@@ -70,39 +70,39 @@ export class UserService {
     }
 
 
-    async register(user: RegisterUserDto) {
-        const captcha = await this.redisService.get(`captcha_${user.email}`);
+    // async register(user: RegisterUserDto) {
+    //     const captcha = await this.redisService.get(`captcha_${user.email}`);
 
-        if (!captcha) {
-            throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
-        }
+    //     if (!captcha) {
+    //         throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
+    //     }
 
-        if (user.captcha !== captcha) {
-            throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
-        }
+    //     if (user.captcha !== captcha) {
+    //         throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
+    //     }
 
-        const foundUser = await this.userRepository.findOneBy({
-            username: user.username
-        });
+    //     const foundUser = await this.userRepository.findOneBy({
+    //         username: user.username
+    //     });
 
-        if (foundUser) {
-            throw new HttpException('用户已存在', HttpStatus.BAD_REQUEST);
-        }
+    //     if (foundUser) {
+    //         throw new HttpException('用户已存在', HttpStatus.BAD_REQUEST);
+    //     }
 
-        const newUser = new User();
-        newUser.username = user.username;
-        newUser.password = md5(user.password);
-        newUser.email = user.email;
-        newUser.nickname = user.nickname;
+    //     const newUser = new User();
+    //     newUser.username = user.username;
+    //     newUser.password = md5(user.password);
+    //     newUser.email = user.email;
+    //     newUser.nickname = user.nickname;
 
-        try {
-            await this.userRepository.save(newUser);
-            return '注册成功';
-        } catch (e) {
-            this.logger.error(e, UserService);
-            return '注册失败';
-        }
-    }
+    //     try {
+    //         await this.userRepository.save(newUser);
+    //         return '注册成功';
+    //     } catch (e) {
+    //         this.logger.error(e, UserService);
+    //         return '注册失败';
+    //     }
+    // }
 
 
     async login(loginUserDto: LoginUserDto, isAdmin: boolean) {
@@ -134,10 +134,10 @@ export class UserService {
             isFrozen: user.isFrozen,
             isAdmin: user.isAdmin,
             roles: user.roles.map(item => item.name),
-            permissions: user.roles.reduce((arr: string[], item) => {
+            permissions: user.roles.reduce<Permission[]>((arr: Permission[], item) => {
                 item.permissions.forEach(permission => {
-                    if (arr.indexOf(permission.code) === -1) {
-                        arr.push(permission.code);
+                    if (arr.findIndex(p => p.code === permission.code) === -1) {
+                        arr.push(permission);
                     }
                 })
                 return arr;
@@ -162,15 +162,25 @@ export class UserService {
             username: user?.username,
             isAdmin: user?.isAdmin,
             roles: user?.roles.map(item => item.name),
-            permissions: user?.roles.reduce((arr: string[], item) => {
+            permissions: user?.roles.reduce((arr: Permission[], item) => {
                 item.permissions.forEach(permission => {
-                    if (arr.indexOf(permission.code) === -1) {
-                        arr.push(permission.code);
+                    if (arr.findIndex(p => p.code === permission.code) === -1) {
+                        arr.push(permission);
                     }
                 })
                 return arr;
             }, [])
         }
+    }
+
+    async findUserDetailById(userId: number) {
+        const user = await this.userRepository.findOne({
+            where: {
+                id: userId
+            }
+        });
+
+        return user;
     }
 
 }

@@ -19,7 +19,7 @@ interface UserInfo {
 
     roles: string[];
 
-    permissions: string[]
+    permissions: { id: number; code: string; description: string }[]
 }
 
 export class LoginUserVo {

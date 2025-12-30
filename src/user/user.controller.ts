@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpException, HttpStatus, Inject, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, Get, HttpException, HttpStatus, Inject, NotFoundException, Post, Query, UnauthorizedException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from '../dto/registerUser';
 import { RedisService } from 'src/redis/redis.service';
@@ -7,11 +7,16 @@ import { md5 } from 'src/utils/utils';
 import { LoginUserDto } from '../dto/loginUser';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
+import { RequireLogin, UserInfo } from 'src/custom.decorator';
+import { UserDetailVo } from './vo/user-info.vo';
 
 @Controller('user')
 export class UserController {
-  userRepository: any;
-  constructor(private readonly userService: UserService) { }
+  constructor(
+    private readonly userService: UserService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService
+  ) { }
 
   @Get("init-data")
   async initData() {
@@ -20,17 +25,10 @@ export class UserController {
   }
 
 
-  @Post('register')
-  async register(@Body() registerUser: RegisterUserDto) {
-    return await this.userService.register(registerUser);
-  }
-
-
-  @Inject(JwtService)
-  private jwtService: JwtService;
-
-  @Inject(ConfigService)
-  private configService: ConfigService;
+  // @Post('register')
+  // async register(@Body() registerUser: RegisterUserDto) {
+  //   return await this.userService.register(registerUser);
+  // }
 
   @Post('login')
   async userLogin(@Body() loginUser: LoginUserDto) {
@@ -58,7 +56,7 @@ export class UserController {
   @Post('admin/login')
   async adminLogin(@Body() loginUser: LoginUserDto) {
     const vo = await this.userService.login(loginUser, true);
-   vo.accessToken = this.jwtService.sign({
+    vo.accessToken = this.jwtService.sign({
       userId: vo.userInfo.id,
       username: vo.userInfo.username,
       roles: vo.userInfo.roles,
@@ -83,7 +81,7 @@ export class UserController {
       const data = this.jwtService.verify(refreshToken);
 
       const user = await this.userService.findUserById(data.userId, false);
-
+      console.log(user, 'user')
       const access_token = this.jwtService.sign({
         userId: user.id,
         username: user.username,
@@ -138,6 +136,30 @@ export class UserController {
       throw new UnauthorizedException('token 已失效，请重新登录');
     }
   }
+
+
+  @Get('info')
+  @RequireLogin()
+  async info(@UserInfo('userId') userId: number) {
+    const user = await this.userService.findUserDetailById(userId);
+
+    if (!user) {
+      throw new NotFoundException('用户不存在');
+    }
+    
+    const vo = new UserDetailVo();
+    vo.id = user.id;
+    vo.email = user.email;
+    vo.username = user.username;
+    vo.headPic = user.headPic;
+    vo.phoneNumber = user.phoneNumber;
+    vo.nickName = user.nickname;
+    vo.createTime = user.createTime;
+    vo.isFrozen = user.isFrozen;
+
+    return vo;
+  }
+
 
 
 }
