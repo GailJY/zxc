@@ -1,7 +1,7 @@
 import { HttpException, HttpStatus, Inject, Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { md5 } from '../utils/utils';
-import { Repository } from 'typeorm';
+import { Like, Repository } from 'typeorm';
 import { RegisterUserDto } from '../dto/registerUser';
 import { User } from './entities/user.entity';
 import { RedisService } from 'src/redis/redis.service';
@@ -72,39 +72,39 @@ export class UserService {
     }
 
 
-    // async register(user: RegisterUserDto) {
-    //     const captcha = await this.redisService.get(`captcha_${user.email}`);
+    async register(user: RegisterUserDto) {
+        const captcha = await this.redisService.get(`captcha_${user.email}`);
 
-    //     if (!captcha) {
-    //         throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
-    //     }
+        if (!captcha) {
+            throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
+        }
 
-    //     if (user.captcha !== captcha) {
-    //         throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
-    //     }
+        if (user.captcha !== captcha) {
+            throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
+        }
 
-    //     const foundUser = await this.userRepository.findOneBy({
-    //         username: user.username
-    //     });
+        const foundUser = await this.userRepository.findOneBy({
+            username: user.username
+        });
 
-    //     if (foundUser) {
-    //         throw new HttpException('用户已存在', HttpStatus.BAD_REQUEST);
-    //     }
+        if (foundUser) {
+            throw new HttpException('用户已存在', HttpStatus.BAD_REQUEST);
+        }
 
-    //     const newUser = new User();
-    //     newUser.username = user.username;
-    //     newUser.password = md5(user.password);
-    //     newUser.email = user.email;
-    //     newUser.nickname = user.nickname;
+        const newUser = new User();
+        newUser.username = user.username;
+        newUser.password = md5(user.password);
+        newUser.email = user.email;
+        newUser.nickname = user.nickname;
 
-    //     try {
-    //         await this.userRepository.save(newUser);
-    //         return '注册成功';
-    //     } catch (e) {
-    //         this.logger.error(e, UserService);
-    //         return '注册失败';
-    //     }
-    // }
+        try {
+            await this.userRepository.save(newUser);
+            return '注册成功';
+        } catch (e) {
+            this.logger.error(e, UserService);
+            return '注册失败';
+        }
+    }
 
 
     async login(loginUserDto: LoginUserDto, isAdmin: boolean) {
@@ -250,5 +250,52 @@ export class UserService {
         }
     }
 
+    async freezeUserById(userId: number) {
+        const foundUser = await this.userRepository.findOneBy({
+            id: userId
+        });
+
+        if (!foundUser) {
+            throw new HttpException('用户不存在', HttpStatus.NOT_FOUND);
+        }
+
+        foundUser.isFrozen = true;
+
+        try {
+            await this.userRepository.save(foundUser);
+            return '用户冻结成功';
+        } catch (e) {
+            this.logger.error(e, UserService);
+            return '用户冻结失败';
+        }
+    }
+
+    async findUsers(username: string, nickname: string, email: string, pageNo: number, pageSize: number) {
+        const skipCount = (pageNo - 1) * pageSize;
+
+        const condition: Record<string, any> = {};
+
+        if (username) {
+            condition.username = Like(`%${username}%`);
+        }
+        if (nickname) {
+            condition.nickname = Like(`%${nickname}%`);
+        }
+        if (email) {
+            condition.email = Like(`%${email}%`);
+        }
+
+        const [users, totalCount] = await this.userRepository.findAndCount({
+            select: ['id', 'username', 'nickname', 'email', 'phoneNumber', 'isFrozen', 'headPic', 'createTime'],
+            skip: skipCount,
+            take: pageSize,
+            where: condition
+        });
+
+        return {
+            users,
+            totalCount
+        }
+    }
 
 }
