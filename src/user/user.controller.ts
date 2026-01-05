@@ -1,4 +1,4 @@
-import { Body, Controller, DefaultValuePipe, Get, HttpException, HttpStatus, Inject, NotFoundException, Post, Query, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, Body, Controller, DefaultValuePipe, Get, HttpException, HttpStatus, Inject, NotFoundException, Post, Query, UnauthorizedException, UploadedFile, UseInterceptors } from '@nestjs/common';
 import { UserService } from './user.service';
 import { RegisterUserDto } from '../dto/registerUser';
 import { RedisService } from 'src/redis/redis.service';
@@ -13,6 +13,11 @@ import { UpdateUserPasswordDto } from '../dto/update-user-password.dto';
 import { UpdateUserDto } from 'src/dto/udpate-user.dto';
 import { ApiBody, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { LoginUserVo } from './vo/login-user.vo';
+import { FileInterceptor } from '@nestjs/platform-express';
+import * as path from 'path';
+import { storage } from '../my-file-storage';
+
+
 
 @ApiTags('用户')
 @Controller('user')
@@ -66,6 +71,7 @@ export class UserController {
     vo.accessToken = this.jwtService.sign({
       userId: vo.userInfo.id,
       username: vo.userInfo.username,
+      email: vo.userInfo.email,
       roles: vo.userInfo.roles,
       permissions: vo.userInfo.permissions
     }, {
@@ -88,6 +94,7 @@ export class UserController {
     vo.accessToken = this.jwtService.sign({
       userId: vo.userInfo.id,
       username: vo.userInfo.username,
+      email: vo.userInfo.email,
       roles: vo.userInfo.roles,
       permissions: vo.userInfo.permissions
     }, {
@@ -114,6 +121,7 @@ export class UserController {
       const access_token = this.jwtService.sign({
         userId: user.id,
         username: user.username,
+        email: user.email,
         roles: user.roles,
         permissions: user.permissions
       }, {
@@ -145,6 +153,7 @@ export class UserController {
       const access_token = this.jwtService.sign({
         userId: user.id,
         username: user.username,
+        email: user.email,
         roles: user.roles,
         permissions: user.permissions
       }, {
@@ -217,5 +226,26 @@ export class UserController {
     @Query('email') email: string
   ) {
     return await this.userService.findUsers(username, nickname, email, pageNo, pageSize);
+  }
+
+  @Post('upload')
+  @UseInterceptors(FileInterceptor('file', {
+    dest: 'uploads',
+    limits: {
+      fileSize: 1024 * 1024 * 3
+    },
+    storage: storage,
+    fileFilter(_req, file, callback) {
+      const extname = path.extname(file.originalname);
+      if (['.png', '.jpg', '.gif'].includes(extname)) {
+        callback(null, true);
+      } else {
+        callback(new BadRequestException('只能上传图片'), false);
+      }
+    }
+  }))
+  uploadFile(@UploadedFile() file: Express.Multer.File) {
+    console.log('file', file);
+    return file.path.replace(/\\/g, '/');
   }
 }

@@ -162,6 +162,7 @@ export class UserService {
         return {
             id: user?.id,
             username: user?.username,
+            email: user?.email,
             isAdmin: user?.isAdmin,
             roles: user?.roles.map(item => item.name),
             permissions: user?.roles.reduce((arr: Permission[], item) => {
@@ -216,15 +217,15 @@ export class UserService {
     }
 
     async update(userId: number, updateUserDto: UpdateUserDto) {
-        const captcha = await this.redisService.get(`update_user_captcha_${updateUserDto.email}`);
+        // const captcha = await this.redisService.get(`update_user_captcha_${updateUserDto.email}`);
 
-        if (!captcha) {
-            throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
-        }
+        // if (!captcha) {
+        //     throw new HttpException('验证码已失效', HttpStatus.BAD_REQUEST);
+        // }
 
-        if (updateUserDto.captcha !== captcha) {
-            throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
-        }
+        // if (updateUserDto.captcha !== captcha) {
+        //     throw new HttpException('验证码不正确', HttpStatus.BAD_REQUEST);
+        // }
 
         const foundUser = await this.userRepository.findOneBy({
             id: userId

@@ -14,8 +14,8 @@ export class UpdateUserDto {
     })
     email: string;
     
-    @IsNotEmpty({
-        message: '验证码不能为空'
-    })
-    captcha: string;
+    // @IsNotEmpty({
+    //     message: '验证码不能为空'
+    // })
+    // captcha: string;
 }
